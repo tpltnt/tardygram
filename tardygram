@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+"""
+This script downloads the image for
+a given instagram post.
+"""
+import argparse
+import requests
+from bs4 import BeautifulSoup
+
+parser = argparse.ArgumentParser(description='Get in image out of instagram.')
+parser.add_argument('URL', type=str, help='instagram URL')
+args = parser.parse_args()
+
+# retrieve the instagram page & extract the image URL
+r = requests.get(args.URL)
+if r.status_code != 200:
+    print("retrieving {} failed".format(args.URL))
+    exit(1)
+soup = BeautifulSoup(r.text, 'html.parser')
+candidates = list(filter(lambda x: "property" in x.attrs
+                         and x['property'] == "og:image"
+                         and "content" in x.attrs,
+                         soup.find_all('meta')))
+if len(candidates) != 1:
+    print("unexpected number ({}) of relevant meta tags".format(len(candidates)))
+    exit(2)
+img_url = candidates[0]['content']
+
+# actually download the image
+r = requests.get(img_url)
+if r.status_code != 200:
+    print("retrieving {} failed".format(args.URL))
+    exit(3)
+filename = img_url.split('/')[-1]
+with open(filename, "wb") as outfile:
+    outfile.write(r.content)
+
